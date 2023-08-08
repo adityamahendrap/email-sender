@@ -1,0 +1,6 @@
+data email bisa diambil dari:
+- excel
+- json
+
+isi dari email bisa ditulis di:
+- json
