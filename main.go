@@ -7,10 +7,12 @@ import (
 	"log"
 	"net/smtp"
 	"os"
+
 	// "path/filepath"
 	"strconv"
 	"strings"
 
+	"github.com/360EntSecGroup-Skylar/excelize"
 	"github.com/joho/godotenv"
 )
 
@@ -78,14 +80,14 @@ func Send(conf Config, email Message) error {
 }
 
 
-func loadFromJsonFile(relativeFilePath string) helper.BodyJson {
+func ReadFromJsonFile(relativeFilePath string) helper.BodyJson {
     absoluteFilePath := helper.GenerateAbsolutePath(relativeFilePath)
     
     fileContentJson, err := helper.ReadFile(absoluteFilePath)
     if err != nil {
         log.Fatal(err)
     }
-    fmt.Print(string(fileContentJson))
+    // fmt.Print(string(fileContentJson))
 
     var body helper.BodyJson
     err = json.Unmarshal(fileContentJson, &body)
@@ -96,24 +98,70 @@ func loadFromJsonFile(relativeFilePath string) helper.BodyJson {
     return body
 }
 
+type M map[string]interface{}
+
+func ReadFromExcelFile(relativePath string, sheetName string, col string, fromRow int, toRow int) []string {
+    xlsx, err := excelize.OpenFile(relativePath)
+    if err != nil {
+        log.Fatal(err.Error())
+    }
+
+    var rows []string
+    for i := fromRow; i <= toRow; i++ {
+        row :=  xlsx.GetCellValue(sheetName, fmt.Sprintf("%s%d", col, i))
+        rows = append(rows, row)
+    }
+
+    // fmt.Printf("%v \n", rows)
+
+    return rows
+}
+
 func main() {
-    relativeFilePath := "resource/body.json"
-    j := loadFromJsonFile(relativeFilePath)
+    // names := ReadFromExcelFile("./resource/data.xlsx","Lomba - Ide Bisnis", "C", 3, 45)
+    // emails := ReadFromExcelFile("./resource/data.xlsx", "Lomba - Ide Bisnis", "D", 3, 45)
+    j := ReadFromJsonFile("resource/body.json")
 
-    message := strings.ReplaceAll(strings.ReplaceAll(j.Message, "[nama]", "Test"), "[perusahaan]", "PT Djarum")
-    to := []string{"ptadityamahendrap@gmail.com", "whatupbiatch69@gmail.com"}
-    subject := j.Subject
+    // for i := 0; i < len(names); i++ {
+    //     fmt.Printf("%s %s\n", names[i], emails[i])
+    // }
+
+    names := []string{"Test", "Test2"}
+    emails := []string{"whatupbiatch69@gmail.com", "ptadityamahendrap@gmail.com"}
+
+    done := make(chan bool) 
     
-    var m Message
-    var conf Config 
-    
-    conf.Load()
-    m.New(to, subject, message, nil)
+    var sendedCount int = 0
+    for i := 0; i < len(emails); i++ {
+        go func(name, email string) {
+            defer func() {
+                done <- true 
+            }()
+            
+            message := strings.ReplaceAll(strings.ReplaceAll(j.Message, "[nama]", "Test"), "[perusahaan]", name)
+            to := []string{email}
+            subject := j.Subject
 
-	err := Send(conf, m)
-	if err != nil {
-		log.Fatal(err.Error())
-	}
+            var m Message
+            var conf Config
 
-	log.Println("Mail sent!")
+            conf.Load()
+            m.New(to, subject, message, nil)
+
+            log.Printf("Sending mail to %s...\n", email)
+            err := Send(conf, m)
+            if err != nil {
+                log.Printf("Error sending mail to %s: %s\n", email, err.Error())
+            } else {
+                log.Printf("Mail sent to %s\n", email)
+            }
+        }(names[i], emails[i])
+    }
+
+    for i := 0; i < len(emails); i++ {
+        <-done
+        sendedCount++
+    }
+
+    log.Println("Done! Total sended email:", sendedCount)
 }
