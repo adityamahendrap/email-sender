@@ -161,9 +161,13 @@ func ReadFromExcelFile(relativePath string, sheetName string, col string, fromRo
 func main() {
     names := ReadFromExcelFile("./resource/data.xlsx","Lomba - Ide Bisnis", "C", 3, 45)
     emails := ReadFromExcelFile("./resource/data.xlsx", "Lomba - Ide Bisnis", "D", 3, 45)
-    // emails := []string{"ptadityamahendrap@gmail.com"}
+
+    // you can test with this
+    // emails := []string{"youremailhere@gmail.com"}
+
     j := ReadFromJsonFile("resource/itcc.json")
 
+    // check data from excel
     for i := 0; i < len(emails); i++ {
         fmt.Printf("%s - %s\n", names[i], emails[i])
     }
@@ -177,19 +181,8 @@ func main() {
     
     var sendedCount int = 0
 
-    attachments := []string{"test.png", "PAMFLET ITCC.jpg"}
-    var attachmentMap = make(map[string]*Attachment)
-    for _, attachment := range attachments {
-        data, err := os.ReadFile(attachment)
-        if err != nil {
-            log.Printf("Error reading attachment %s: %s\n", attachment, err.Error())
-            continue
-        }
-        attachmentMap[attachment] = &Attachment{
-            FileName: attachment,
-            Data:     data,
-        }
-    }
+    attachments := []string{"PAMFLET ITCC.jpg"}
+
 
     for i := 0; i < len(emails); i++ {
         go func(name, email string) {
@@ -197,9 +190,11 @@ func main() {
                 done <- true 
             }()
             
+            // for other case
             // message := strings.ReplaceAll(strings.ReplaceAll(j.Message, "[nama]", "Test"), "[perusahaan]", name)
-            to := []string{email}
             // subject := j.Subject
+
+            to := []string{email}
 
             var m Message
             var conf Config
