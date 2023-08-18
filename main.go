@@ -139,8 +139,6 @@ func ReadFromJsonFile(relativeFilePath string) helper.BodyJson {
     return body
 }
 
-type M map[string]interface{}
-
 func ReadFromExcelFile(relativePath string, sheetName string, col string, fromRow int, toRow int) []string {
     xlsx, err := excelize.OpenFile(relativePath)
     if err != nil {
