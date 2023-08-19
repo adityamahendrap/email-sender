@@ -7,13 +7,13 @@ import (
 	"log"
 	"net/smtp"
 	"os"
-	// "path/filepath"
 	"strconv"
 	"strings"
     "bytes"
 	"github.com/360EntSecGroup-Skylar/excelize"
 	"github.com/joho/godotenv"
     "encoding/base64"
+    "io"
 )
 
 type Config struct {
@@ -156,31 +156,46 @@ func ReadFromExcelFile(relativePath string, sheetName string, col string, fromRo
     return rows
 }
 
-func main() {
-    names := ReadFromExcelFile("./resource/data.xlsx","Lomba - Ide Bisnis", "C", 3, 45)
-    emails := ReadFromExcelFile("./resource/data.xlsx", "Lomba - Ide Bisnis", "D", 3, 45)
-
-    // you can test with this
-    // emails := []string{"youremailhere@gmail.com"}
-
-    j := ReadFromJsonFile("resource/itcc.json")
-
-    // check data from excel
-    for i := 0; i < len(emails); i++ {
-        fmt.Printf("%s - %s\n", names[i], emails[i])
+func setupLogWriter() (*os.File) {
+    logFile, err := os.OpenFile("email_log.txt", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+    if err != nil {
+        log.Fatal(err)
     }
-
-    return
     
+    log.SetOutput(logFile)
+    log.SetOutput(io.MultiWriter(logFile, os.Stderr))
+
+    return logFile
+}
+
+func main() {
+    // init log writer
+    logFile := setupLogWriter()
+    defer logFile.Close()
+
+    log.Println("Initiating...")
+
+    names := ReadFromExcelFile("./resource/data.xlsx","Lomba - Ide Bisnis", "C", 3, 45)
+    // emails := ReadFromExcelFile("./resource/data.xlsx", "Lomba - Ide Bisnis", "D", 3, 45)
+    
+    // you can test with this
+    emails := []string{"prawira206jng@gmail.com", "ptadityamahendrap@gmail.com"}
+    
+    j := ReadFromJsonFile("resource/itcc.json")
     message := j.Message
     subject := j.Subject
 
-    done := make(chan bool) 
-    
     var sendedCount int = 0
-
     attachments := []string{"PAMFLET ITCC.jpg"}
 
+    // check data from excel
+    // for i := 0; i < len(emails); i++ {
+    //     log.Printf("%s - %s\n", names[i], emails[i])
+    // }
+
+    return
+    
+    done := make(chan bool) 
 
     for i := 0; i < len(emails); i++ {
         go func(name, email string) {
@@ -212,14 +227,14 @@ func main() {
                 log.Printf("Error sending mail to %s: %s\n", email, err.Error())
             } else {
                 log.Printf("Mail sent to %s\n", email)
+                sendedCount++
             }
         }(names[i], emails[i])
     }
 
     for i := 0; i < len(emails); i++ {
         <-done
-        sendedCount++
     }
 
-    log.Println("Done! Total sended email:", sendedCount)
+    log.Printf("Done! Total success sended email: %d of %d\n\n", sendedCount, len(emails))
 }
